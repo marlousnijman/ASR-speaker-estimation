@@ -1,4 +1,3 @@
-python
 pydub
 matplotlib
 soundfile
