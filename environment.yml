@@ -1,7 +1,0 @@
-name: asr
-
-dependencies:
-  - python
-  - pip:
-    - soundfile
-    - webrtcvad

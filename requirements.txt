@@ -1,0 +1,7 @@
+python
+pydub
+matplotlib
+soundfile
+webrtcvad
+jupyterlab
+notebook
