@@ -24,7 +24,7 @@ def get_files(data_dir):
     return list(zip(filepaths, files))
 
 
-def get_frames(audio, sample_rate, ms):
+def get_frames(audio, sample_rate, ms=10):
     """
     Get all frames of the audio sample with a certain sample rate
     of a certain duration in ms.
@@ -74,30 +74,30 @@ def get_end_frames(frame_ids, end_id):
 
 
 def remove_speechless_frames(frames, sample_rate):
-        """
-        Remove part of the audio at the start and end 
-        without speech.
-        """
-        # Initialize voice activity detector
-        vad = webrtcvad.Vad(0)
+    """
+    Remove part of the audio at the start and end 
+    without speech.
+    """
+    # Initialize voice activity detector
+    vad = webrtcvad.Vad(0)
 
-        # Get ids of speechless frames
-        no_voice_frame_ids = []
-        for i, frame in enumerate(frames):
-            if(vad.is_speech(frame, sample_rate) == False):
-                no_voice_frame_ids.append(i)
+    # Get ids of speechless frames
+    no_voice_frame_ids = []
+    for i, frame in enumerate(frames):
+        if(vad.is_speech(frame, sample_rate) == False):
+            no_voice_frame_ids.append(i)
 
-        # Only remove frames at start and end of sample
-        if len(no_voice_frame_ids) > 0:
-            start = max(get_start_frames(no_voice_frame_ids), default=0)
-            end = min(get_end_frames(no_voice_frame_ids, len(frames)-1), default=len(frames))
-            frames = frames[start:end]
+    # Only remove frames at start and end of sample
+    if len(no_voice_frame_ids) > 0:
+        start = max(get_start_frames(no_voice_frame_ids), default=0)
+        end = min(get_end_frames(no_voice_frame_ids, len(frames)-1), default=len(frames))
+        frames = frames[start:end]
 
-        # Flatten list
-        new_audio = np.asarray([item for sublist in frames for item in sublist])
+    # Flatten list
+    new_audio = np.asarray([item for sublist in frames for item in sublist])
 
-        # Return processed audio
-        return new_audio
+    # Return processed audio
+    return new_audio
 
 
 def get_chunks(audio, sample_rate, s):
@@ -126,7 +126,7 @@ def preprocessing(input_dir, output_dir, s):
 
         # Get frames of 10 ms from the audio samples to remove 
         # speechless parts at beginning and end of audio
-        frames = get_frames(audio, sample_rate, 10)
+        frames = get_frames(audio, sample_rate)
         new_audio = remove_speechless_frames(frames, sample_rate)
 
         # Check if duration of sample is longer than 10s
@@ -158,9 +158,12 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Preprocess LibriSpeech data for CountNet')
 
+    # Paths
     parser.add_argument('-d', '--data_dir', type=str, help="Data directory", default = "../../data/")
     parser.add_argument('-i', '--input_dir', type=str, help="Input directory", default = "dev-clean/LibriSpeech/dev-clean/")
     parser.add_argument('-o', '--output_dir', type=str, help="output directory", default = "processed/")
+
+    # Parameters
     parser.add_argument('-s', '--seconds', type=int, help="Length of chunks in seconds", default = 10)
 
     args = parser.parse_args()
