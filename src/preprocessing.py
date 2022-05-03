@@ -100,34 +100,59 @@ def remove_speechless_frames(frames, sample_rate):
         return new_audio
 
 
-def preprocessing(input_dir, output_dir):
+def get_chunks(audio, sample_rate, s):
+    """
+    Get chunks of audio with a length of s.
+    """
+    n = s * sample_rate
+    offset = 0
+    
+    chunks = []
+    while offset + n < len(audio):
+        chunks.append(audio[offset:offset + n])
+        offset += n
+
+    return chunks
+
+
+def preprocessing(input_dir, output_dir, s):
     """
     Preprocess data by removing start and end silence 
     and convert flac to wav file.
     """
-
     for filepath, filename in get_files(input_dir):
         # Read audio
         audio, sample_rate = sf.read(filepath)
 
-        # Get frames of 10 ms from the audio samples
+        # Get frames of 10 ms from the audio samples to remove 
+        # speechless parts at beginning and end of audio
         frames = get_frames(audio, sample_rate, 10)
-
-        # Remove speechless parts at beginning and end of audio
         new_audio = remove_speechless_frames(frames, sample_rate)
 
-        # Write processed audio to file
-        sf.write(os.path.join(output_dir, filename.replace(".flac", ".wav")), new_audio, sample_rate)
+        # Check if duration of sample is longer than 10s
+        # to make chunks.
+        duration = len(new_audio) / sample_rate
+        if duration >= s:
+            chunks = get_chunks(new_audio, sample_rate, s)
+
+            # Write processed audio chunks to file
+            for i, chunk in enumerate(chunks):
+                new_filename = filename.replace(".flac", f"-{i:04}.wav")
+                sf.write(os.path.join(output_dir, new_filename), chunk, sample_rate)
 
 
 def main(args):
+    """
+    Read .flac audio files, remove start and end silence, and
+    create chunks of a certain duration and write as .wav files
+    """
     input_dir = os.path.join(args.data_dir, args.input_dir)
     output_dir = os.path.join(args.data_dir, args.output_dir)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    preprocessing(input_dir, output_dir)
+    preprocessing(input_dir, output_dir, args.seconds)
     
 
 if __name__ == "__main__":
@@ -135,7 +160,8 @@ if __name__ == "__main__":
 
     parser.add_argument('-d', '--data_dir', type=str, help="Data directory", default = "../../data/")
     parser.add_argument('-i', '--input_dir', type=str, help="Input directory", default = "dev-clean/LibriSpeech/dev-clean/")
-    parser.add_argument('-o', '--output_dir', type=str, help="output directory", default = "output/")
+    parser.add_argument('-o', '--output_dir', type=str, help="output directory", default = "processed/")
+    parser.add_argument('-s', '--seconds', type=int, help="Length of chunks in seconds", default = 10)
 
     args = parser.parse_args()
 
