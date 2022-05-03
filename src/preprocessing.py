@@ -1,0 +1,142 @@
+import numpy as np
+import os
+import soundfile as sf
+import webrtcvad
+import argparse
+
+
+def get_files(data_dir):
+    """
+    Get the file names of all .flac files that are available in the 
+    data directory
+    """
+    filepaths = []
+    files = []
+
+    for (dirpath, dirnames, filenames) in os.walk(data_dir):
+        for filename in filenames:
+            if filename.endswith(".flac"):
+
+                # Save both the path and the file name
+                filepaths.append(os.path.join(dirpath, filename))
+                files.append(filename)
+
+    return list(zip(filepaths, files))
+
+
+def get_frames(audio, sample_rate, ms):
+    """
+    Get all frames of the audio sample with a certain sample rate
+    of a certain duration in ms.
+    """
+    n = int(sample_rate * (ms / 1000.0) * 2)
+    offset = 0
+    timestamp = 0.0
+    duration = (float(n) / sample_rate) / 2.0
+
+    frames = []
+    while offset + n < len(audio):
+        frames.append(audio[offset:offset + n])
+        timestamp += duration
+        offset += n
+
+    return frames
+
+
+def get_start_frames(frame_ids, start_id=0):
+    """
+    Get the first consecutive frame IDs without speech.
+    """
+    start_frame_ids = []
+    start = start_id
+    for frame_id in frame_ids:
+        if frame_id == start:
+            start_frame_ids.append(frame_id)
+            start += 1
+    
+    return start_frame_ids
+
+
+def get_end_frames(frame_ids, end_id):
+    """
+    Get the final consecutive frame IDs without speech.
+    """
+    end_frame_ids = []
+    end = end_id
+    
+    frame_ids.reverse()
+    for frame_id in frame_ids:
+        if frame_id == end:
+            end_frame_ids.append(frame_id)
+            end -= 1
+    
+    return end_frame_ids
+
+
+def remove_speechless_frames(frames, sample_rate):
+        """
+        Remove part of the audio at the start and end 
+        without speech.
+        """
+        # Initialize voice activity detector
+        vad = webrtcvad.Vad(0)
+
+        # Get ids of speechless frames
+        no_voice_frame_ids = []
+        for i, frame in enumerate(frames):
+            if(vad.is_speech(frame, sample_rate) == False):
+                no_voice_frame_ids.append(i)
+
+        # Only remove frames at start and end of sample
+        if len(no_voice_frame_ids) > 0:
+            start = max(get_start_frames(no_voice_frame_ids), default=0)
+            end = min(get_end_frames(no_voice_frame_ids, len(frames)-1), default=len(frames))
+            frames = frames[start:end]
+
+        # Flatten list
+        new_audio = np.asarray([item for sublist in frames for item in sublist])
+
+        # Return processed audio
+        return new_audio
+
+
+def preprocessing(input_dir, output_dir):
+    """
+    Preprocess data by removing start and end silence 
+    and convert flac to wav file.
+    """
+
+    for filepath, filename in get_files(input_dir):
+        # Read audio
+        audio, sample_rate = sf.read(filepath)
+
+        # Get frames of 10 ms from the audio samples
+        frames = get_frames(audio, sample_rate, 10)
+
+        # Remove speechless parts at beginning and end of audio
+        new_audio = remove_speechless_frames(frames, sample_rate)
+
+        # Write processed audio to file
+        sf.write(os.path.join(output_dir, filename.replace(".flac", ".wav")), new_audio, sample_rate)
+
+
+def main(args):
+    input_dir = os.path.join(args.data_dir, args.input_dir)
+    output_dir = os.path.join(args.data_dir, args.output_dir)
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    preprocessing(input_dir, output_dir)
+    
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Preprocess LibriSpeech data for CountNet')
+
+    parser.add_argument('-d', '--data_dir', type=str, help="Data directory", default = "../../data/")
+    parser.add_argument('-i', '--input_dir', type=str, help="Input directory", default = "dev-clean/LibriSpeech/dev-clean/")
+    parser.add_argument('-o', '--output_dir', type=str, help="output directory", default = "output/")
+
+    args = parser.parse_args()
+
+    main(args)
