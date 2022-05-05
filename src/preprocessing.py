@@ -115,7 +115,7 @@ def get_chunks(audio, sample_rate, s):
     return chunks
 
 
-def preprocessing(input_dir, output_dir, s):
+def preprocess(input_dir, output_dir, s):
     """
     Preprocess data by removing start and end silence 
     and convert flac to wav file.
@@ -152,7 +152,7 @@ def main(args):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    preprocessing(input_dir, output_dir, args.seconds)
+    preprocess(input_dir, output_dir, args.seconds)
     
 
 if __name__ == "__main__":
