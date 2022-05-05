@@ -29,7 +29,7 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
     
     def on_epoch_end(self):
         if self.shuffle:
-            self.df = self.df.sample(frac=1).reset_index(drop=True)
+            np.random.shuffle(self.data_files)
     
     def __get_data(self, batches):
         X = np.empty((self.batch_size, *self.dim, 1))
@@ -64,13 +64,10 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
         return k_speakers_one_hot
 
     def __getitem__(self, index):
-        print(f"index: {index}")
         batches = self.data_files[index * self.batch_size:(index + 1) * self.batch_size]
         X, y = self.__get_data(batches)        
 
-        print(y)
         return X, y
     
     def __len__(self):
-        print(f"len : {self.n // self.batch_size}")
         return self.n // self.batch_size
