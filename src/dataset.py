@@ -40,6 +40,8 @@ def make_dataset(input_dir, output_dir, max_k):
             # Write to file
             sf.write(os.path.join(output_dir, f"{k:02}_speakers_{s}.wav"), normalized_audio, sample_rate)
 
+    return samples
+
 
 def main(args):
     """

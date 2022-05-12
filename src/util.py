@@ -2,9 +2,34 @@ import tensorflow as tf
 import os
 import random
 import numpy as np
+import librosa
+import soundfile as sf
+
+
+def get_files(data_dir, file_format=".flac"):
+    """
+    Get the file names of all files of a certain format that are available
+    in the data directory
+    """
+    filepaths = []
+    files = []
+
+    for (dirpath, dirnames, filenames) in os.walk(data_dir):
+        for filename in filenames:
+            if filename.endswith(file_format):
+
+                # Save both the path and the file name
+                filepaths.append(os.path.join(dirpath, filename))
+                files.append(filename)
+
+    return list(zip(filepaths, files))
 
 
 def select_audio(audio, sample_rate, s):
+    """
+    Randomly select audio sample with a duration of s seconds
+    from a longer audio segment.
+    """
     samples = sample_rate * s
     start = random.choice(range(len(audio)-samples))
 
@@ -12,6 +37,10 @@ def select_audio(audio, sample_rate, s):
 
 
 class CustomDataGenerator(tf.keras.utils.Sequence):
+    """
+    Custom data generator used for loading in audio segments
+    and transforming them to the time-frequency domain.
+    """
     
     def __init__(self, data_path,
                  data_files, dim, 
@@ -21,11 +50,11 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
         self.data_path = data_path
         self.data_files = data_files
         self.dim = dim
-        self.max_k = max_k
         self.batch_size = batch_size
         self.shuffle = shuffle
         
         self.n = len(self.data_files)
+        self.max_k = max_k + 1
     
     def on_epoch_end(self):
         if self.shuffle:
@@ -58,7 +87,8 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
         return spectrogram
 
     def __getY(self, file_name):
-        k_speakers = int(file_name[:2].lstrip('0'))
+        k_speakers_str = file_name[:2].lstrip('0')
+        k_speakers = 0 if len(k_speakers_str) == 0 else int(k_speakers_str)
         k_speakers_one_hot = tf.one_hot(k_speakers, self.max_k)
 
         return k_speakers_one_hot
@@ -71,3 +101,18 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
     
     def __len__(self):
         return self.n // self.batch_size
+
+
+def process_noise(data_dir, dataset, noise_samples, sample_rate):
+    """
+    Process noise samples by resampling the audio to the same
+    sample rate as the speaker audio and saving them in the
+    correct dataset directories.
+    """
+    for i, noise_sample in enumerate(noise_samples):
+        # Load audio with new sample rate
+        audio, samplerate = librosa.load(noise_sample[0], sr=sample_rate)
+
+        # Save new audio 
+        new_name = os.path.join(data_dir, f"{dataset}/", f"{0:02}_speakers_{i}.wav")
+        sf.write(new_name, audio, sample_rate)

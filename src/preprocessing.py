@@ -3,25 +3,7 @@ import os
 import soundfile as sf
 import webrtcvad
 import argparse
-
-
-def get_files(data_dir):
-    """
-    Get the file names of all .flac files that are available in the 
-    data directory
-    """
-    filepaths = []
-    files = []
-
-    for (dirpath, dirnames, filenames) in os.walk(data_dir):
-        for filename in filenames:
-            if filename.endswith(".flac"):
-
-                # Save both the path and the file name
-                filepaths.append(os.path.join(dirpath, filename))
-                files.append(filename)
-
-    return list(zip(filepaths, files))
+import util
 
 
 def get_frames(audio, sample_rate, ms=10):
@@ -120,7 +102,7 @@ def preprocess(input_dir, output_dir, s):
     Preprocess data by removing start and end silence 
     and convert flac to wav file.
     """
-    for filepath, filename in get_files(input_dir):
+    for filepath, filename in util.get_files(input_dir):
         # Read audio
         audio, sample_rate = sf.read(filepath)
 

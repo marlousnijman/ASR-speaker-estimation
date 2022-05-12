@@ -19,7 +19,7 @@ def CRNN(input_shape, max_k):
     model.add(layers.LSTM(40, return_sequences=True))
     model.add(layers.MaxPooling1D((2)))
     model.add(layers.Flatten())
-    model.add(layers.Dense(max_k)) #+1
+    model.add(layers.Dense(max_k + 1))
     model.add(layers.Softmax())
 
     return model
