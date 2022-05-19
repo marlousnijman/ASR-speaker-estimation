@@ -4,6 +4,7 @@ import soundfile as sf
 import webrtcvad
 import argparse
 import util
+from tqdm import tqdm
 
 
 def get_frames(audio, sample_rate, ms=10):
@@ -99,28 +100,36 @@ def get_chunks(audio, sample_rate, s):
 
 def preprocess(input_dir, output_dir, s):
     """
-    Preprocess data by removing start and end silence 
-    and convert flac to wav file.
+    Preprocess data by collecting data for each,
+    removing beginning and end silence of each audio
+    sample, and creating chunks of s seconds.
     """
-    for filepath, filename in util.get_files(input_dir):
-        # Read audio
-        audio, sample_rate = sf.read(filepath)
+    for speaker in tqdm(util.get_speakers(input_dir)):
+        # Collect for current speaker
+        all_audio = []
 
-        # Get frames of 10 ms from the audio samples to remove 
-        # speechless parts at beginning and end of audio
-        frames = get_frames(audio, sample_rate)
-        new_audio = remove_speechless_frames(frames, sample_rate)
+        for filepath, filename in util.get_files(input_dir):
+            if filename.startswith(speaker):
+                # Read audio
+                audio, sample_rate = sf.read(filepath)
+                sample_rate = sample_rate
 
-        # Check if duration of sample is longer than 10s
-        # to make chunks.
-        duration = len(new_audio) / sample_rate
-        if duration >= s:
-            chunks = get_chunks(new_audio, sample_rate, s)
+                # Get frames of 10 ms from the audio samples to remove 
+                # speechless parts at beginning and end of audio
+                frames = get_frames(audio, sample_rate)
+                new_audio = remove_speechless_frames(frames, sample_rate)
 
-            # Write processed audio chunks to file
-            for i, chunk in enumerate(chunks):
-                new_filename = filename.replace(".flac", f"-{i:04}.wav")
-                sf.write(os.path.join(output_dir, new_filename), chunk, sample_rate)
+                # Add to total list of audio for that speaker
+                all_audio.extend(new_audio)
+
+        # Compute chunks of s seconds
+        # print(len(all_audio))
+        chunks = get_chunks(all_audio, sample_rate, s)
+
+        # Write processed audio chunks to file
+        for i, chunk in enumerate(chunks):
+            new_filename = f"{int(speaker):04}-s{i:04}.wav"
+            sf.write(os.path.join(output_dir, new_filename), chunk, sample_rate)
 
 
 def main(args):

@@ -4,32 +4,43 @@ import random
 import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
+import util
+from tqdm import tqdm
 
 
-def make_dataset(input_dir, output_dir, max_k):
+def make_dataset(input_dir, output_dir, max_k, samples=1820):
     """
-    Make a dataset by combining audio files for different
-    numbers of speakers.
+    Create a dataset with an equal number of samples for each
+    k = 0, ..., max_k, by adding k speech samples from randomly
+    selected unique speakers, and peak normalize the resulting
+    audio.
     """
-    all_speakers = os.listdir(input_dir)
+    speakers = util.get_speakers(input_dir, file_format=".wav")
+    files = os.listdir(input_dir)
 
-    # Compute how many samples per k we can make
-    # with the available dataset
-    n = np.sum(np.arange(max_k+1))
-    samples = len(all_speakers) // n
-
-    for k in range(1, max_k+1):
+    for k in tqdm(range(1, max_k+1)):
         for s in range(samples):
-            speakers = random.sample(all_speakers, k)
+            # Select k random speakers
+            k_speakers = random.sample(speakers, k)
             all_audio = []
 
-            # Collect k random speakers
-            for speaker in speakers:
-                audio, sample_rate = sf.read(os.path.join(input_dir, speaker))
-                all_audio.append(audio)
+            # Select speaker audio
+            for speaker in k_speakers:
+                speaker_files = [f for f in files if f.startswith(speaker)]
 
-                # Remove used samples
-                all_speakers.remove(speaker)
+                # Remove speakers with no remaining audio samples
+                if len(speaker_files) == 1:
+                    speakers.remove(speaker)
+
+                # Select random audio file
+                speaker_file = random.choice(speaker_files)
+
+                # Remove audio file from list
+                files.remove(speaker_file)
+
+                # Read audio
+                audio, sample_rate = sf.read(os.path.join(input_dir, speaker_file))
+                all_audio.append(audio)
 
             # Combine audio
             all_audio = np.sum(all_audio, axis=0)
@@ -39,8 +50,6 @@ def make_dataset(input_dir, output_dir, max_k):
 
             # Write to file
             sf.write(os.path.join(output_dir, f"{k:02}_speakers_{s}.wav"), normalized_audio, sample_rate)
-
-    return samples
 
 
 def main(args):
@@ -54,7 +63,7 @@ def main(args):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    make_dataset(input_dir, output_dir, args.max_k)
+    make_dataset(input_dir, output_dir, args.max_k, args.samples)
 
 
 if __name__ == "__main__":
@@ -67,6 +76,7 @@ if __name__ == "__main__":
 
     # Parameters
     parser.add_argument('-k', '--max_k', type=int, help="Maximum number of speakers", default = 10)
+    parser.add_argument('-s', '--samples', type=int, help="Number of samples for each speaker", default = 1820)
 
     args = parser.parse_args()
 

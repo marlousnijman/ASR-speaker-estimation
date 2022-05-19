@@ -6,3 +6,5 @@ jupyterlab
 notebook
 pyloudnorm
 librosa
+pandas
+tqdm
