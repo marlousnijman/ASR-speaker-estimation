@@ -28,8 +28,15 @@ def make_dataset(input_dir, output_dir, max_k, samples=1820):
             for speaker in k_speakers:
                 speaker_files = [f for f in files if f.startswith(speaker)]
 
+                # Remove speakers with no remaining audio samples
+                if len(speaker_files) == 1:
+                    speakers.remove(speaker)
+
                 # Select random audio file
                 speaker_file = random.choice(speaker_files)
+
+                # Remove audio file from list
+                files.remove(speaker_file)
 
                 # Read audio
                 audio, sample_rate = sf.read(os.path.join(input_dir, speaker_file))
