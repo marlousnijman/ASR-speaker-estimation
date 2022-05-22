@@ -8,7 +8,7 @@ import util
 from tqdm import tqdm
 
 
-def make_dataset(input_dir, output_dir, max_k, samples=1820):
+def make_dataset(input_dir, output_dir, max_k, samples=1820, train=False):
     """
     Create a dataset with an equal number of samples for each
     k = 0, ..., max_k, by adding k speech samples from randomly
@@ -28,15 +28,17 @@ def make_dataset(input_dir, output_dir, max_k, samples=1820):
             for speaker in k_speakers:
                 speaker_files = [f for f in files if f.startswith(speaker)]
 
-                # Remove speakers with no remaining audio samples
-                if len(speaker_files) == 1:
-                    speakers.remove(speaker)
-
                 # Select random audio file
                 speaker_file = random.choice(speaker_files)
 
-                # Remove audio file from list
-                files.remove(speaker_file)
+                # Remove used data during training
+                if train: 
+                    # Remove speakers with no remaining audio samples
+                    if len(speaker_files) == 1:
+                        speakers.remove(speaker)
+                
+                    # Remove audio file from list
+                    files.remove(speaker_file)
 
                 # Read audio
                 audio, sample_rate = sf.read(os.path.join(input_dir, speaker_file))

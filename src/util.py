@@ -40,7 +40,7 @@ def get_speakers(input_dir, file_format=".flac"):
     return list(np.unique(speakers))
 
 
-def select_audio(audio, sample_rate, s):
+def select_audio(audio, sample_rate, s, train=True):
     """
     Randomly select audio sample with a duration of s seconds
     from a longer audio segment.
@@ -48,7 +48,12 @@ def select_audio(audio, sample_rate, s):
     samples = sample_rate * s
     start = random.choice(range(len(audio)-samples))
 
-    return audio[start:start+samples]
+    if train:
+        audio_sample = audio[start:start+samples]
+    else:
+        audio_sample = audio[:samples]
+
+    return audio_sample
 
 
 class CustomDataGenerator(tf.keras.utils.Sequence):
@@ -61,6 +66,7 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
                  data_files, dim, 
                  max_k, batch_size,
                  mean, std, s,
+                 train=True, 
                  shuffle=True):
         
         self.data_path = data_path
@@ -71,6 +77,7 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
         self.std = std
         self.s = s
         self.shuffle = shuffle
+        self.train = train
         
         self.n = len(self.data_files)
         self.max_k = max_k + 1
@@ -96,8 +103,8 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
         audio, sample_rate = tf.audio.decode_wav(contents=audio_file)
         audio = tf.squeeze(audio, axis=-1)
         
-        # Select random s seconds sample
-        audio = select_audio(audio, sample_rate, self.s)
+        # Select (random) s seconds sample
+        audio = select_audio(audio, sample_rate, self.s, train=self.train)
 
         # Convert to frequency domain
         waveform = tf.cast(audio, dtype=tf.float32)
@@ -178,35 +185,3 @@ def remove_speech_noise(files, meta_path, speech_categories):
             files.remove(f)
 
     return files
-
-
-def get_train_mean_std(input_dir):
-    """
-    Compute the mean and standard deviation over
-    the training set to be used for standardization
-    over both the training set, as well as
-    validation and test sets. 
-    """
-    spectrograms = []
-
-    for filepath, filename in tqdm(get_files(input_dir, file_format=".wav")):
-        # Read resampled audio
-        audio_file = tf.io.read_file(filepath)
-        audio, sample_rate = tf.audio.decode_wav(contents=audio_file)
-        audio = tf.squeeze(audio, axis=-1)
-        waveform = tf.cast(audio, dtype=tf.float32)
-
-        # Convert to frequency domain
-        samples = int(sample_rate.numpy() * (25/1000))
-        overlap = int(sample_rate.numpy() * (10/1000))
-        spectrogram = tf.signal.stft(waveform, frame_length=samples, frame_step=overlap, fft_length=samples, pad_end=True)
-        spectrogram = tf.abs(spectrogram) 
-
-        # Normalize 
-        spectrogram, _ = tf.linalg.normalize(spectrogram, 'euclidean')
-
-        # Collect all spectrograms
-        spectrograms.append(spectrogram.numpy())
-
-    # Return mean and standard deviation
-    return np.mean(spectrograms), np.std(spectrograms)
