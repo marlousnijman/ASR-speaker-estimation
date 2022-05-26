@@ -140,6 +140,13 @@ class CustomDataGenerator(tf.keras.utils.Sequence):
     def __len__(self):
         return self.n // self.batch_size
 
+    def get_classes(self):
+        classes = []
+        for file_name in self.data_files:
+            classes.append(self.__getY(file_name).numpy())
+        
+        return classes
+
 
 def process_noise(data_dir, dataset, noise_samples, sample_rate, duration=10):
     """

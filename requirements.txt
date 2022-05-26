@@ -9,3 +9,4 @@ librosa
 pandas
 tqdm
 wandb
+seaborn
