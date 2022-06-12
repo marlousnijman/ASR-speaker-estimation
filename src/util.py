@@ -46,9 +46,9 @@ def select_audio(audio, sample_rate, s, train=True):
     from a longer audio segment.
     """
     samples = sample_rate * s
-    start = random.choice(range(len(audio)-samples))
-
+    
     if train:
+        start = random.choice(range(len(audio)-samples))
         audio_sample = audio[start:start+samples]
     else:
         audio_sample = audio[:samples]
