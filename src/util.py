@@ -6,7 +6,9 @@ import librosa
 import soundfile as sf
 import pyloudnorm as pyln
 import pandas as pd
+import matplotlib.pyplot as plt
 from tqdm import tqdm
+from scipy import signal
 
 
 def get_files(data_dir, file_format=".flac"):
@@ -192,3 +194,29 @@ def remove_speech_noise(files, meta_path, speech_categories):
             files.remove(f)
 
     return files
+
+
+def plot_signal(audio, sample_rate):
+    """
+    Plot speech signal.
+    """
+    duration = len(audio) / sample_rate
+    time = np.arange(0, duration, 1/sample_rate)
+    plt.figure()
+    plt.plot(time, audio)
+    plt.xlabel('Time (s)')
+
+
+def plot_stft(audio, sample_rate):
+    """
+    Plot short-time Fourier transform (STFT)>
+    """
+    samples = int(sample_rate * (25/1000))
+    overlap = int(sample_rate * (15/1000))
+
+    f, t, Zxx = signal.stft(audio, sample_rate, nperseg=samples, noverlap=overlap)
+
+    plt.figure()
+    plt.pcolormesh(t, f, np.abs(Zxx), shading='gouraud')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time (s)')
